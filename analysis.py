@@ -4,12 +4,25 @@ import os
 import ocean
 
 def main(script_name, schematic,
-         path=os.path.abspath("."), simpath=None):
+         path=os.path.abspath("."), simpath=None,
+         *args, **kwargs):
   if simpath == None:
     simpath = os.path.join(path, 'simulation')
-  with ocean.Ocean(fname=script_name, schematic=schematic, 
-                   path=path, simpath=simpath) as oc:
-    pass
+
+  designVars = {
+    "Beta"   : "2",
+    "f_CLK"  : "100M",
+    "Nsize"  : "1",
+    "t_FALL" : "100p",
+    "t_RISE" : "100p",
+    "V_DD"   : "2.5"
+  }
+
+  with ocean.Ocean(fname=script_name, schematic=schematic,
+                   path=path, simpath=simpath,
+                   *args, **kwargs) as oc:
+    for k, v in designVars.iteritems():
+      oc.desVar(oc._string(k), v)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -20,7 +33,7 @@ if __name__ == '__main__':
            )
   parser.add_argument('schematic', type=str,
                       help='Name of schematic cellview')
-  parser.add_argument('script_name', type=file, 
+  parser.add_argument('script_name', type=file,
                       nargs='?', default=None,
                       help='Name of Ocean script to generate')
   parser.add_argument('--path', dest='path', type=str, 
@@ -29,8 +42,9 @@ if __name__ == '__main__':
   parser.add_argument('--simpath', dest='simpath', 
                       type=str, default=None,
                       help='Directory in which to run the simulator, if not <path>/simulation')
-  args = parser.parse_args()
+  parser.add_argument('--modelfile', dest='modelfile',
+                      type=str, default='tsmc025.m',
+                      help='Model library technology file')
 
-  main(schematic=args.schematic, 
-       script_name=args.script_name, 
-       path=args.path, simpath=args.simpath)
+  args = parser.parse_args()
+  main(**dict(args._get_kwargs()))
