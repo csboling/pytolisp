@@ -2,6 +2,7 @@ import argparse
 import os
 
 import ocean
+import lispify
 
 def main(script_name, schematic,
          path=os.path.abspath("."), simpath=None,
@@ -22,7 +23,7 @@ def main(script_name, schematic,
                    path=path, simpath=simpath,
                    *args, **kwargs) as oc:
     for k, v in designVars.iteritems():
-      oc.desVar(oc._string(k), v)
+      oc.desVar(k, lispify.Atom(v))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(

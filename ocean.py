@@ -35,8 +35,7 @@ class Ocean(object):
     else:
       self.f = open(self.fname, 'w')
 
-    self.simulator(Quote(self.mgr.simulator))
-    # self.simulator(self._quote(self.mgr.simulator))
+    self.simulator(Quote(Atom(self.mgr.simulator)))
     self.design(
       path(
         self.mgr.abs_simpath, 
@@ -53,17 +52,11 @@ class Ocean(object):
         "nom"))
     self.modelFile(
       map(Quote, self.mgr.modelfiles))
-    # self.modelFile(
-    #   *(self._quote(
-    #      self._list(
-    #        map(self._string, x))) 
-    #    for x in self.mgr.modelfiles))
 
     return self
 
   def _put(self, *args):
     self.f.write(lispify(args) + '\n')
-#    self.f.write(self._list(args, sep='\n  ') + '\n')
 
   def __getattr__(self, name):
     return partial(self._put, Atom(name))
