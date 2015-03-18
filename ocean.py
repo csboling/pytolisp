@@ -4,6 +4,11 @@ import os
 import sys
 from functools import partial
 
+from lispify import lispify, Atom, Quote
+
+def path(*args):
+  return os.path.abspath(os.path.join(*args))
+
 class OceanManager(object):
   def __init__(self, schematic, path, simpath, modelfile):
     self.schematic = schematic
@@ -14,7 +19,7 @@ class OceanManager(object):
                                     self.simulator)
     self.modelfiles = [(os.path.abspath(x), "") for x in 
                         [os.environ['CDK_DIR'] + "MSU/allModels.scs",
-                         os.path.join(path, modelfile)]]
+                         os.path.join(self.path, modelfile)]]
 
 class Ocean(object):
   def __init__(self, fname, *args, **kwargs):
@@ -30,50 +35,38 @@ class Ocean(object):
     else:
       self.f = open(self.fname, 'w')
 
-    self.simulator(self._quote(self.mgr.simulator))
+    self.simulator(Quote(self.mgr.simulator))
+    # self.simulator(self._quote(self.mgr.simulator))
     self.design(
-      self._path(
+      path(
         self.mgr.abs_simpath, 
         "netlist/netlist"))
     self.resultsDir(
-      self._path(
+      path(
         self.mgr.abs_simpath, 
         "schematic"))
     self.path(
-      self._path(
+      path(
         os.environ['CDK_DIR'], 
         "models", 
         self.mgr.simulator, 
         "nom"))
     self.modelFile(
-      *(self._quote(
-         self._list(
-           map(self._string, x))) 
-        for x in self.mgr.modelfiles))
+      map(Quote, self.mgr.modelfiles))
+    # self.modelFile(
+    #   *(self._quote(
+    #      self._list(
+    #        map(self._string, x))) 
+    #    for x in self.mgr.modelfiles))
 
     return self
 
-  @staticmethod
-  def _quote(x):
-    return "'" + x
-
-  @staticmethod
-  def _list(l, sep=' '):
-    return '(' + (sep.join(l)) + ')'
-
-  @staticmethod
-  def _string(x):
-    return repr(x).replace("'", "\"")
-
-  @classmethod
-  def _path(cls, *args):
-    return cls._string(os.path.abspath(os.path.join(*args)))
-
   def _put(self, *args):
-    self.f.write(self._list(args, sep='\n  ') + '\n')
+    self.f.write(lispify(args) + '\n')
+#    self.f.write(self._list(args, sep='\n  ') + '\n')
 
   def __getattr__(self, name):
-    return partial(self._put, name)
+    return partial(self._put, Atom(name))
 
 if __name__ == '__main__':
   with Ocean() as o:
