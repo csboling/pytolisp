@@ -13,8 +13,6 @@ class Quote(object):
     return "'" + lispify(self.contents)
 
 def _parse_sexp(x):
-  if x == [] or x == ():
-    return '()'
   return '(' + ' '.join(map(lispify, x)) + ')'
 
 def _parse_str(x):
