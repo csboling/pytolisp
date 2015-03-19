@@ -12,9 +12,6 @@ import ast
 import meta
 import lispify as lpfy
 
-def compose(*args):
-  return reduce(lambda f, g: lambda x: f(g(x)), args)
-
 class Embedding(object):
   '''
   This only operates on ast.Expr, so assignments, return
@@ -60,11 +57,6 @@ class Embedding(object):
                 recur(x.right)]
     else:
       return cls.toSource(x)
-
-  def visit_Expr(self, node, frame):
-    parsed = self.toList(node.value, frame=frame)
-    self.outf.write(lpfy.lispify(parsed) + '\n')
-    return ast.Expr() # replace with an empty node
 
   @classmethod
   def parse_node(cls, node, frame):
