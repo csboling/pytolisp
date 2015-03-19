@@ -44,7 +44,8 @@ class Embedding(object):
       # ew
       print ast.dump(x)
       normalized = repr(eval(cls.toSource(x)))      
-      recur_with = ast.parse(normalized).body[0]
+      recur_with = ast.parse(normalized).body[0].value
+      print ast.dump(recur_with)
       return recur(recur_with)
     elif isinstance(x, ast.Num):
       return x.n
