@@ -5,6 +5,7 @@ A shallow embedding to compile a subset of Python to Lisp.
 import argparse
 import sys
 from StringIO import StringIO
+from functools import partial
 
 import inspect
 import ast
@@ -19,72 +20,86 @@ class Embedding(object):
   This only operates on ast.Expr, so assignments, return
   expressions, etc. should be excluded. Therefore you
   basically write a 'script' by not assigning any names,
-  and
+  and interleave this with writing python normally
+  (although you cannot currently extract values back
+  out of the "Lisp" part of the code).
+  To accomplish this we do some tricky things with
+  introspection and execution frames.
   '''
-  def __init__(self, outf=None):
-    if outf == None:
-      outf = StringIO()
-    self.outf = outf
-
   @staticmethod
   def toSource(x):
     return meta.dump_python_source(x).strip()
 
   @classmethod
-  def toList(cls, x):
+  def toList(cls, x, frame):
+    recur = partial(cls.toList, frame=frame)
     if isinstance(x, ast.Name):
-      return lpfy.Atom(x.id)
+      try:
+        value = frame.f_locals[x.id]
+      except KeyError:
+        value = x.id
+      return lpfy.Atom(value)
     # Python-style function calls are evaluated
     elif isinstance(x, ast.Call):
-      return lpfy.Atom(eval(cls.toSource(x)))
+      # ew
+      print ast.dump(x)
+      normalized = repr(eval(cls.toSource(x)))      
+      recur_with = ast.parse(normalized).body[0]
+      return recur(recur_with)
     elif isinstance(x, ast.Num):
       return x.n
     elif isinstance(x, ast.Str):
-      return lpfy._parse_str(x.s)
+      print x.s
+      return x.s
     elif isinstance(x, ast.List):
-      return map(cls.toList, x.elts)
+      return map(recur, x.elts)
     elif isinstance(x, ast.UnaryOp):
       return [lpfy.Atom(cls.toSource(x.op)),
-                cls.toList(x.operand)]
+                recur(x.operand)]
     elif isinstance(x, ast.BinOp):
       return [lpfy.Atom(cls.toSource(x.op)),
-                cls.toList(x.left),
-                cls.toList(x.right)]
+                recur(x.left),
+                recur(x.right)]
     else:
-     return cls.toSource(x)
+      return cls.toSource(x)
 
-  def visit_Expr(self, node):
-    parsed = self.toList(node.value)
+  def visit_Expr(self, node, frame):
+    parsed = self.toList(node.value, frame=frame)
     self.outf.write(lpfy.lispify(parsed) + '\n')
     return ast.Expr() # replace with an empty node
 
-def parse_ast(t, outf=None):
-  embedding = Embedding(outf)
-  for __x in t:
-    if isinstance(__x, ast.Expr):
-      embedding.visit_Expr(__x)
-    else:
-      exec(meta.dump_python_source(__x))
+  @classmethod
+  def parse_node(cls, node, frame):
+    parsed = cls.toList(node.value, frame=frame)
+    return (lpfy.lispify(parsed) + '\n')
 
-  try:
-    return embedding.outf.getvalue()
-  except AttributeError:
-    return None
+  @classmethod
+  def parse_ast(cls, t):
+    # This is done very naively
+    result = ''
+    for __x in t:
+      frame = inspect.currentframe()
+      if isinstance(__x, ast.Expr):
+        result += cls.parse_node(__x, frame=frame)
+      else:
+        exec(meta.dump_python_source(__x))
+    return result
 
-def parse_func(func, outf=None):
+def parse_func(func):
   source = inspect.getsource(func)
   func_ast = ast.parse(source).body[0]
-  return parse_ast(func_ast.body, outf=outf)
+  embedding = Embedding()
+  return embedding.parse_ast(func_ast.body)
 
 def parse(source, outf=None):
-  return parse_ast(ast.parse(source), outf=outf)
+  embedding = Embedding()
+  return embedding.parse_ast(ast.parse(source))
 
 def example():
-  y * 2
-  x = 7*'\x30'
-  print x
-  [y] * 2
-  str('3')
+  z = 7*5
+  print z
+  [y] * z
+  [lispfunc, "x", str(3)]
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -92,4 +107,4 @@ if __name__ == '__main__':
                       nargs='?', default=sys.stdout)
   args = parser.parse_args()
 
-  parse_func(example, outf=args.outfname)
+  print parse_func(example)
