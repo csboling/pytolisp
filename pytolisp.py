@@ -42,15 +42,12 @@ class Embedding(object):
     # Python-style function calls are evaluated
     elif isinstance(x, ast.Call):
       # ew
-      print ast.dump(x)
       normalized = repr(eval(cls.toSource(x)))      
       recur_with = ast.parse(normalized).body[0].value
-      print ast.dump(recur_with)
       return recur(recur_with)
     elif isinstance(x, ast.Num):
       return x.n
     elif isinstance(x, ast.Str):
-      print x.s
       return x.s
     elif isinstance(x, ast.List):
       return map(recur, x.elts)
@@ -92,7 +89,7 @@ def parse_func(func):
   embedding = Embedding()
   return embedding.parse_ast(func_ast.body)
 
-def parse(source, outf=None):
+def parse(source):
   embedding = Embedding()
   return embedding.parse_ast(ast.parse(source))
 
@@ -103,9 +100,4 @@ def example():
   [lispfunc, "x", str(3)]
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-  parser.add_argument('outfname', type=argparse.FileType('w'), 
-                      nargs='?', default=sys.stdout)
-  args = parser.parse_args()
-
   print parse_func(example)
